@@ -70,6 +70,21 @@ export async function saveProfile(data: { role: "candidate" | "recruiter"; first
   revalidatePath("/profile");
 }
 
+async function hasRecruiterMessageColumn(supabase: any) {
+  const { data, error } = await supabase
+    .from("information_schema.columns")
+    .select("column_name")
+    .eq("table_schema", "public")
+    .eq("table_name", "applications")
+    .eq("column_name", "recruiter_message")
+    .limit(1);
+
+  if (error) {
+    return false;
+  }
+  return Array.isArray(data) && data.length > 0;
+}
+
 export async function updateProfileResume(resumePath: string) {
   const supabase = await getSupabaseClient();
   const { data: userData, error: userError } = await supabase.auth.getUser();
@@ -302,6 +317,16 @@ export async function calculateJobMatch(jobId: string, overrideResumePath?: stri
     throw new Error("Por favor, sube un currículum primero.");
   }
 
+  // Get resume_id from resumes table
+  const { data: resumeRecord, error: resumeError } = await supabase
+    .from("resumes")
+    .select("id")
+    .eq("file_path", finalResumePath)
+    .eq("candidate_id", candidateId)
+    .single();
+  
+  const resumeId = resumeRecord?.id || null;
+
   // 2. Get Job description
   const { data: job, error: jobError } = await supabase.from("jobs").select("*").eq("id", jobId).single();
   if (jobError || !job) throw new Error("Job not found.");
@@ -350,6 +375,7 @@ export async function calculateJobMatch(jobId: string, overrideResumePath?: stri
     missing_keywords: parsed.missing_keywords,
     action_plan: parsed.action_plan,
     status: 'calculated',
+    resume_id: resumeId,
     updated_at: new Date().toISOString()
   }, { onConflict: 'job_id,candidate_id' }).select().single();
 
@@ -412,13 +438,18 @@ export async function getJobApplications(jobId: string) {
 
   const { data, error } = await supabase
     .from("applications")
-    .select(`*, profiles(first_name, last_name, resume_path)`)
+    .select(`*, profiles(first_name, last_name, resume_path), resumes(file_path)`)
     .eq("job_id", jobId)
     .neq("status", "calculated")
     .order("match_score", { ascending: false });
 
   if (error) throw error;
-  return data;
+  
+  // Map resume_path from resumes table if available, otherwise from profiles
+  return data?.map(app => ({
+    ...app,
+    resume_path: app.resumes?.file_path || app.profiles?.resume_path
+  })) || [];
 }
 
 export async function markApplicationsAsRead(jobId: string) {
@@ -426,18 +457,25 @@ export async function markApplicationsAsRead(jobId: string) {
   const { data: userData, error: userError } = await supabase.auth.getUser();
   if (userError || !userData?.user) return;
 
-  // We rely on RLS to only update if the user is the recruiter
+  // Legacy helper: mark all as read for the recruiter if required.
   await supabase
     .from("applications")
     .update({ is_new: false })
     .eq("job_id", jobId);
-    
-  // Also transition newly seen 'applied' to 'viewed'
-  await supabase
+}
+
+export async function markApplicationAsViewed(applicationId: string) {
+  const supabase = await getSupabaseClient();
+  const { data: userData, error: userError } = await supabase.auth.getUser();
+  if (userError || !userData?.user) throw new Error("No authenticated user found.");
+
+  const { error } = await supabase
     .from("applications")
-    .update({ status: "viewed" })
-    .eq("job_id", jobId)
+    .update({ status: "viewed", is_new: false, updated_at: new Date().toISOString() })
+    .eq("id", applicationId)
     .eq("status", "applied");
+
+  if (error) throw error;
 }
 
 export async function updateApplicationStatus(applicationId: string, status: "viewed" | "rejected" | "in_progress", message?: string) {
@@ -445,13 +483,18 @@ export async function updateApplicationStatus(applicationId: string, status: "vi
   const { data: userData, error: userError } = await supabase.auth.getUser();
   if (userError || !userData?.user) throw new Error("No authenticated user found.");
 
+  const payload: any = {
+    status,
+    updated_at: new Date().toISOString(),
+  };
+
+  if (await hasRecruiterMessageColumn(supabase)) {
+    payload.recruiter_message = message || null;
+  }
+
   const { error } = await supabase
     .from("applications")
-    .update({ 
-      status, 
-      recruiter_message: message || null,
-      updated_at: new Date().toISOString()
-    })
+    .update(payload)
     .eq("id", applicationId);
 
   if (error) throw error;

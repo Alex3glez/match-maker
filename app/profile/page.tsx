@@ -31,25 +31,29 @@ export default function ProfilePage() {
   const [applications, setApplications] = useState<any[]>([]);
   const [resumes, setResumes] = useState<any[]>([]);
 
-  useEffect(() => {
-    async function loadData() {
-      const data = await getProfile();
-      if (data) {
-        setProfile(data);
-        setFirstName(data.first_name || "");
-        setLastName(data.last_name || "");
-        setRole(data.role as "candidate" | "recruiter");
-        if (data.role === "candidate") {
-          const [apps, resList] = await Promise.all([
-            getCandidateApplications(),
-            getCandidateResumes()
-          ]);
-          setApplications(apps);
-          setResumes(resList);
-        }
+  const loadData = async () => {
+    const data = await getProfile();
+    if (data) {
+      setProfile(data);
+      setFirstName(data.first_name || "");
+      setLastName(data.last_name || "");
+      setRole(data.role as "candidate" | "recruiter");
+      if (data.role === "candidate") {
+        const [apps, resList] = await Promise.all([
+          getCandidateApplications(),
+          getCandidateResumes()
+        ]);
+        setApplications(apps);
+        setResumes(resList);
+      } else {
+        setApplications([]);
+        setResumes([]);
       }
-      setLoading(false);
     }
+    setLoading(false);
+  };
+
+  useEffect(() => {
     loadData();
   }, []);
 
@@ -60,7 +64,8 @@ export default function ProfilePage() {
       try {
         await saveProfile({ role, first_name: firstName, last_name: lastName });
         setMessage("Perfil actualizado correctamente.");
-        setProfile((prev: any) => ({ ...prev, role, first_name: firstName, last_name: lastName }));
+        await loadData();
+        window.dispatchEvent(new Event("profile-updated"));
       } catch (err: any) {
         const errorText = err.message || "Error al guardar el perfil.";
         if (errorText.includes("Could not find the table") || errorText.includes("relation \"public.profiles\" does not exist")) {

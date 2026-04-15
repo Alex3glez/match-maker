@@ -206,31 +206,68 @@ export default function PublicJobDetail({
                 <div className="flex flex-col items-center justify-between gap-4 sm:flex-row">
                   <div>
                     <h2 className="text-xl font-bold text-slate-900">
-                      {application.status === "applied" ? "¡Solicitud enviada!" : "¿Te interesa esta oferta?"}
-                    </h2>
-                    <p className="text-sm text-slate-600">
-                      {application.status === "applied"
-                        ? "El reclutador ya puede ver tu perfil y el resultado de tu compatibilidad."
-                        : "Envía tu solicitud para que el reclutador pueda ver tu perfil."}
-                    </p>
-                  </div>
-                  {application.status !== "applied" ? (
-                    <div className="flex flex-col items-end gap-2">
-                      {error && <p className="text-sm font-medium text-rose-600">{error}</p>}
-                      <button
-                        onClick={handleApply}
-                        disabled={isPending}
-                        className="inline-flex items-center gap-2 rounded-2xl bg-emerald-600 px-6 py-3 text-sm font-semibold text-white transition hover:bg-emerald-700 disabled:opacity-50"
-                      >
-                        <CheckCircle2 className="h-5 w-5" />
-                        {isPending ? "Enviando..." : "Solicitar Trabajo"}
-                      </button>
-                    </div>
-                  ) : (
-                    <div className="rounded-full bg-emerald-100 px-4 py-2 text-sm font-bold text-emerald-700">
-                      Solicitado
-                    </div>
-                  )}
+                {application.status === "calculated"
+                  ? "¿Te interesa esta oferta?"
+                  : application.status === "applied"
+                  ? "¡Solicitud enviada!"
+                  : application.status === "viewed"
+                  ? "Solicitud vista"
+                  : application.status === "in_progress"
+                  ? "En proceso de selección"
+                  : application.status === "rejected"
+                  ? "Solicitud rechazada"
+                  : "Estado de la solicitud"}
+              </h2>
+              <p className="text-sm text-slate-600">
+                {application.status === "calculated"
+                  ? "Envía tu solicitud para que el reclutador pueda ver tu perfil."
+                  : application.status === "applied"
+                  ? "El reclutador ya puede ver tu perfil y el resultado de tu compatibilidad."
+                  : application.status === "viewed"
+                  ? "Tu solicitud ya fue vista por el reclutador."
+                  : application.status === "in_progress"
+                  ? "Tu candidatura está avanzando en el proceso de selección."
+                  : application.status === "rejected"
+                  ? "Esta solicitud no fue seleccionada en esta ocasión."
+                  : "Estado actual de tu solicitud."}
+              </p>
+            </div>
+            {application.status === "calculated" ? (
+              <div className="flex flex-col items-end gap-2">
+                {error && <p className="text-sm font-medium text-rose-600">{error}</p>}
+                <button
+                  onClick={handleApply}
+                  disabled={isPending}
+                  className="inline-flex items-center gap-2 rounded-2xl bg-emerald-600 px-6 py-3 text-sm font-semibold text-white transition hover:bg-emerald-700 disabled:opacity-50"
+                >
+                  <CheckCircle2 className="h-5 w-5" />
+                  {isPending ? "Enviando..." : "Solicitar Trabajo"}
+                </button>
+              </div>
+            ) : (
+              <div className={`rounded-full px-4 py-2 text-sm font-bold ${
+                application.status === "applied"
+                  ? "bg-amber-100 text-amber-700"
+                  : application.status === "viewed"
+                  ? "bg-blue-100 text-blue-700"
+                  : application.status === "in_progress"
+                  ? "bg-emerald-100 text-emerald-700"
+                  : application.status === "rejected"
+                  ? "bg-rose-100 text-rose-700"
+                  : "bg-slate-100 text-slate-700"
+              }`}
+              >
+                {application.status === "applied"
+                  ? "Solicitud enviada"
+                  : application.status === "viewed"
+                  ? "Vista"
+                  : application.status === "in_progress"
+                  ? "En proceso"
+                  : application.status === "rejected"
+                  ? "Rechazada"
+                  : application.status}
+              </div>
+            )}
                 </div>
               </div>
             </div>

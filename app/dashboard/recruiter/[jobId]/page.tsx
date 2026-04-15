@@ -1,7 +1,7 @@
 import { getJobById, getJobApplications, markApplicationsAsRead } from "@/app/actions";
-import { ArrowLeft, User, FileText, CheckCircle2 } from "lucide-react";
+import { ArrowLeft, User, FileText, CheckCircle2, Briefcase } from "lucide-react";
 import Link from "next/link";
-import MatchResultCards from "@/components/MatchResultCards";
+import ApplicationCard from "@/components/ApplicationCard";
 
 export default async function RecruiterJobDetail({
   params,
@@ -9,9 +9,6 @@ export default async function RecruiterJobDetail({
   params: Promise<{ jobId: string }>;
 }) {
   const { jobId } = await params;
-
-  // Mark all applications for this job as read
-  await markApplicationsAsRead(jobId);
 
   const job = await getJobById(jobId);
   const applications = await getJobApplications(jobId);
@@ -25,6 +22,15 @@ export default async function RecruiterJobDetail({
     );
   }
 
+  // Calculate stats
+  const stats = {
+    total: applications.length,
+    pending: applications.filter(a => a.status === 'applied').length,
+    viewed: applications.filter(a => a.status === 'viewed').length,
+    inProgress: applications.filter(a => a.status === 'in_progress').length,
+    rejected: applications.filter(a => a.status === 'rejected').length,
+  };
+
   return (
     <div className="mx-auto w-full max-w-5xl px-6 py-12">
       <Link
@@ -36,18 +42,48 @@ export default async function RecruiterJobDetail({
       </Link>
 
       <div className="mb-12 rounded-[32px] border border-slate-200 bg-white p-8 shadow-sm">
-        <h1 className="text-3xl font-bold text-slate-950">{job.title}</h1>
-        <p className="mt-2 text-sm text-slate-500">Publicada el {new Date(job.created_at).toLocaleDateString()}</p>
+        <div className="flex items-start justify-between">
+          <div>
+            <h1 className="text-3xl font-bold text-slate-950">{job.title}</h1>
+            <p className="mt-2 text-sm text-slate-500">Publicada el {new Date(job.created_at).toLocaleDateString()}</p>
+          </div>
+          <div className="inline-flex items-center gap-2 rounded-full bg-emerald-100 px-4 py-2 text-sm font-semibold text-emerald-700">
+            <Briefcase className="h-4 w-4" />
+            Activa
+          </div>
+        </div>
         <div className="mt-6 whitespace-pre-wrap rounded-2xl bg-slate-50 p-6 text-sm text-slate-700">
           {job.description}
         </div>
       </div>
 
-      <div className="mb-6 flex items-center justify-between">
+      {/* Stats Section */}
+      <div className="mb-8 grid grid-cols-2 gap-4 sm:grid-cols-5">
+        <div className="rounded-2xl border border-slate-200 bg-white p-4 text-center">
+          <div className="text-2xl font-bold text-slate-950">{stats.total}</div>
+          <p className="mt-1 text-xs font-medium text-slate-600">Solicitudes</p>
+        </div>
+        <div className="rounded-2xl border border-slate-200 bg-white p-4 text-center">
+          <div className="text-2xl font-bold text-amber-600">{stats.pending}</div>
+          <p className="mt-1 text-xs font-medium text-slate-600">Pendientes</p>
+        </div>
+        <div className="rounded-2xl border border-slate-200 bg-white p-4 text-center">
+          <div className="text-2xl font-bold text-blue-600">{stats.viewed}</div>
+          <p className="mt-1 text-xs font-medium text-slate-600">Revisadas</p>
+        </div>
+        <div className="rounded-2xl border border-slate-200 bg-white p-4 text-center">
+          <div className="text-2xl font-bold text-emerald-600">{stats.inProgress}</div>
+          <p className="mt-1 text-xs font-medium text-slate-600">En Proceso</p>
+        </div>
+        <div className="rounded-2xl border border-slate-200 bg-white p-4 text-center">
+          <div className="text-2xl font-bold text-rose-600">{stats.rejected}</div>
+          <p className="mt-1 text-xs font-medium text-slate-600">Rechazadas</p>
+        </div>
+      </div>
+
+      <div className="mb-6">
         <h2 className="text-2xl font-bold text-slate-900">Candidatos</h2>
-        <span className="rounded-full bg-slate-100 px-3 py-1 text-sm font-medium text-slate-700">
-          {applications.length} solicitudes
-        </span>
+        <p className="mt-1 text-sm text-slate-600">Ordenados por compatibilidad</p>
       </div>
 
       {applications.length === 0 ? (
@@ -57,51 +93,9 @@ export default async function RecruiterJobDetail({
           <p className="mt-2 text-slate-600">Aún nadie ha solicitado esta oferta.</p>
         </div>
       ) : (
-        <div className="space-y-6">
+        <div className="space-y-4">
           {applications.map((app: any) => (
-            <div key={app.id} className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
-              <div className="mb-6 flex items-start justify-between border-b border-slate-100 pb-6">
-                <div>
-                  <h3 className="flex items-center gap-2 text-lg font-bold text-slate-900">
-                    <User className="h-5 w-5 text-slate-400" />
-                    {app.profiles.first_name} {app.profiles.last_name}
-                  </h3>
-                  <p className="mt-1 text-sm text-slate-500">
-                    Solicitado el {new Date(app.updated_at).toLocaleDateString()}
-                  </p>
-                </div>
-                <div className="flex flex-col items-end gap-2">
-                  <div className="flex h-12 w-12 items-center justify-center rounded-full bg-slate-950 font-bold text-white shadow-sm">
-                    {app.match_score}%
-                  </div>
-                  <span className="text-xs font-semibold text-slate-500">Match Score</span>
-                </div>
-              </div>
-
-              {/* Detalle del Match */}
-              <div className="space-y-4">
-                <div>
-                  <h4 className="mb-2 flex items-center gap-2 text-sm font-semibold text-slate-900">
-                    <FileText className="h-4 w-4 text-slate-500" />
-                    Plan de Acción Sugerido
-                  </h4>
-                  <p className="rounded-2xl bg-slate-50 p-4 text-sm text-slate-700">{app.action_plan}</p>
-                </div>
-                
-                {app.missing_keywords && app.missing_keywords.length > 0 && (
-                  <div>
-                    <h4 className="mb-2 text-sm font-semibold text-slate-900">Palabras Clave Faltantes</h4>
-                    <div className="flex flex-wrap gap-2">
-                      {app.missing_keywords.map((kw: string, i: number) => (
-                        <span key={i} className="rounded-full bg-rose-50 px-3 py-1 text-xs font-medium text-rose-700">
-                          {kw}
-                        </span>
-                      ))}
-                    </div>
-                  </div>
-                )}
-              </div>
-            </div>
+            <ApplicationCard key={app.id} app={app} />
           ))}
         </div>
       )}
