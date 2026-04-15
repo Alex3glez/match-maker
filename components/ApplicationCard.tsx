@@ -204,7 +204,7 @@ export default function ApplicationCard({ app, onStatusUpdate }: { app: any; onS
                   Ver Currículum
                 </button>
 
-                {localStatus !== "rejected" && localStatus !== "in_progress" && (
+                {localStatus !== "rejected" && (
                   <div className="relative">
                     <button
                       ref={actionButtonRef}
@@ -218,16 +218,18 @@ export default function ApplicationCard({ app, onStatusUpdate }: { app: any; onS
                     </button>
 
                     {showActionMenu && (
-                      <div className="absolute right-0 mt-2 w-56 rounded-xl bg-white border border-slate-200 shadow-lg z-10">
-                        <button
-                          onClick={() => handleAction("select")}
-                          className="w-full text-left px-4 py-2 hover:bg-emerald-50 text-sm text-emerald-700 font-medium rounded-t-xl transition"
-                        >
-                          ✓ Pasar a proceso de selección
-                        </button>
+                      <div className="absolute right-0 mt-2 w-56 flex flex-col rounded-xl bg-white border border-slate-200 shadow-lg z-10 overflow-hidden">
+                        {localStatus !== "in_progress" && (
+                          <button
+                            onClick={() => handleAction("select")}
+                            className="w-full text-left px-4 py-2 hover:bg-emerald-50 text-sm text-emerald-700 font-medium transition"
+                          >
+                            ✓ Pasar a proceso de selección
+                          </button>
+                        )}
                         <button
                           onClick={() => handleAction("reject")}
-                          className="w-full text-left px-4 py-2 hover:bg-rose-50 text-sm text-rose-700 font-medium rounded-b-xl transition"
+                          className="w-full text-left px-4 py-2 hover:bg-rose-50 text-sm text-rose-700 font-medium transition"
                         >
                           ✗ Rechazar
                         </button>

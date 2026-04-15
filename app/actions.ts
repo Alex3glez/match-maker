@@ -594,12 +594,9 @@ export async function updateApplicationStatus(applicationId: string, status: "vi
 
   const payload: any = {
     status,
+    recruiter_message: message || null,
     updated_at: new Date().toISOString(),
   };
-
-  if (await hasRecruiterMessageColumn(supabase)) {
-    payload.recruiter_message = message || null;
-  }
 
   const { error } = await supabase
     .from("applications")
@@ -651,6 +648,17 @@ export async function getResumeUrl(resumePath: string) {
   const supabase = await getSupabaseClient();
   const { data: userData, error: userError } = await supabase.auth.getUser();
   if (userError || !userData?.user) throw new Error("No authenticated user found.");
+
+  // Check if the user has permission to view this resume using the database RLS
+  const { data: resumeRecord, error: resumeError } = await supabase
+    .from("resumes")
+    .select("id")
+    .eq("file_path", resumePath)
+    .single();
+
+  if (resumeError || !resumeRecord) {
+    return { error: "No tienes permiso para ver este currículum o el archivo no existe." };
+  }
 
   const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
   if (!serviceRoleKey) throw new Error("Missing SUPABASE_SERVICE_ROLE_KEY");

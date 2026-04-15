@@ -208,16 +208,7 @@ export default function PublicJobDetail({
               <MatchResultCards analysis={application} />
 
               <div className="rounded-[32px] border border-slate-200 bg-white p-8 shadow-sm">
-                {application.recruiter_message && (
-                  <div className="mb-6 flex items-start gap-3 rounded-2xl border border-emerald-200 bg-emerald-50 p-4">
-                    <MessageSquare className="mt-0.5 h-4 w-4 shrink-0 text-emerald-600" />
-                    <div>
-                      <p className="text-xs font-semibold text-emerald-700 mb-1">Mensaje del reclutador</p>
-                      <p className="text-sm text-emerald-900 italic">"{application.recruiter_message}"</p>
-                    </div>
-                  </div>
-                )}
-                <div className="flex flex-col items-center justify-between gap-4 sm:flex-row">
+                <div className="flex flex-col items-start justify-between gap-4 sm:flex-row sm:items-center">
                   <div>
                     <h2 className="text-xl font-bold text-slate-900">
                 {application.status === "calculated"
@@ -232,8 +223,10 @@ export default function PublicJobDetail({
                   ? "Solicitud rechazada"
                   : "Estado de la solicitud"}
               </h2>
-              <p className="text-sm text-slate-600">
-                {application.status === "calculated"
+              <p className="text-sm text-slate-600 mt-1">
+                {application.recruiter_message
+                  ? application.recruiter_message
+                  : application.status === "calculated"
                   ? "Envía tu solicitud para que el reclutador pueda ver tu perfil."
                   : application.status === "applied"
                   ? "El reclutador ya puede ver tu perfil y el resultado de tu compatibilidad."
@@ -245,12 +238,6 @@ export default function PublicJobDetail({
                   ? "Esta solicitud no fue seleccionada en esta ocasión."
                   : "Estado actual de tu solicitud."}
               </p>
-              {application.status === "rejected" && application.recruiter_message && (
-                <div className="mt-4 rounded-2xl border border-rose-200 bg-rose-50 p-4 text-sm text-rose-700">
-                  <p className="font-semibold">Mensaje del reclutador</p>
-                  <p className="mt-2 italic">"{application.recruiter_message}"</p>
-                </div>
-              )}
             </div>
             {application.status === "calculated" ? (
               <div className="flex flex-col items-end gap-2">
@@ -265,7 +252,7 @@ export default function PublicJobDetail({
                 </button>
               </div>
             ) : (
-              <div className={`rounded-full px-4 py-2 text-sm font-bold ${
+              <div className={`rounded-full px-4 py-2 text-sm font-bold shrink-0 ${
                 application.status === "applied"
                   ? "bg-amber-100 text-amber-700"
                   : application.status === "viewed"
@@ -282,7 +269,7 @@ export default function PublicJobDetail({
                   : application.status === "viewed"
                   ? "Vista"
                   : application.status === "in_progress"
-                  ? "En proceso"
+                  ? "En proceso de selección"
                   : application.status === "rejected"
                   ? "Rechazada"
                   : application.status}
