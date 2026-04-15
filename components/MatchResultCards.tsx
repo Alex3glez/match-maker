@@ -1,6 +1,14 @@
 import { Sparkles, ClipboardList, ArrowRight } from "lucide-react";
 import { MatchAnalysisResult } from "../app/actions";
 
+const getMatchScoreClasses = (score: number) => {
+  if (score >= 90) return "text-emerald-600";
+  if (score >= 75) return "text-lime-600";
+  if (score >= 60) return "text-amber-500";
+  if (score >= 45) return "text-orange-500";
+  return "text-rose-500";
+};
+
 export default function MatchResultCards({ analysis }: { analysis: MatchAnalysisResult }) {
   return (
     <div className="mt-8 grid gap-4 lg:grid-cols-3">
@@ -9,7 +17,7 @@ export default function MatchResultCards({ analysis }: { analysis: MatchAnalysis
           <Sparkles className="h-5 w-5 text-slate-500" />
           <h2 className="text-sm font-semibold">Match Score</h2>
         </div>
-        <p className="text-5xl font-semibold text-slate-950">{analysis.match_score}%</p>
+        <p className={`text-5xl font-semibold ${getMatchScoreClasses(analysis.match_score)}`}>{analysis.match_score}%</p>
         <p className="mt-3 text-sm text-slate-600">Evaluación de compatibilidad entre el currículum y la oferta.</p>
       </div>
 

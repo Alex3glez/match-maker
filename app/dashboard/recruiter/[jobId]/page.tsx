@@ -47,14 +47,23 @@ export default async function RecruiterJobDetail({
             <h1 className="text-3xl font-bold text-slate-950">{job.title}</h1>
             <p className="mt-2 text-sm text-slate-500">Publicada el {new Date(job.created_at).toLocaleDateString()}</p>
           </div>
-          <div className="inline-flex items-center gap-2 rounded-full bg-emerald-100 px-4 py-2 text-sm font-semibold text-emerald-700">
+          <div className={`inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm font-semibold ${job.status === 'ended' ? 'bg-slate-100 text-slate-700' : 'bg-emerald-100 text-emerald-700'}`}>
             <Briefcase className="h-4 w-4" />
-            Activa
+            {job.status === 'ended' ? 'Terminada' : 'Activa'}
           </div>
         </div>
         <div className="mt-6 whitespace-pre-wrap rounded-2xl bg-slate-50 p-6 text-sm text-slate-700">
           {job.description}
         </div>
+      </div>
+      <div className="mb-10 flex items-center justify-between gap-3">
+        <div className="text-sm text-slate-600">Edita título, descripción o cambia el estado de la oferta.</div>
+        <Link
+          href={`/dashboard/recruiter/${job.id}/edit`}
+          className="inline-flex items-center gap-2 rounded-2xl bg-slate-950 px-4 py-2 text-sm font-semibold text-white transition hover:bg-slate-800"
+        >
+          Editar oferta
+        </Link>
       </div>
 
       {/* Stats Section */}
@@ -73,7 +82,7 @@ export default async function RecruiterJobDetail({
         </div>
         <div className="rounded-2xl border border-slate-200 bg-white p-4 text-center">
           <div className="text-2xl font-bold text-emerald-600">{stats.inProgress}</div>
-          <p className="mt-1 text-xs font-medium text-slate-600">En Proceso</p>
+          <p className="mt-1 text-xs font-medium text-slate-600">En proceso de selección</p>
         </div>
         <div className="rounded-2xl border border-slate-200 bg-white p-4 text-center">
           <div className="text-2xl font-bold text-rose-600">{stats.rejected}</div>

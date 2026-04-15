@@ -63,20 +63,20 @@ export default async function HomePage() {
           <div className="mx-auto max-w-7xl px-6">
             <div className="grid grid-cols-2 md:grid-cols-4 gap-8">
               <div className="text-center">
-                <div className="text-3xl sm:text-4xl font-bold text-slate-950">10K+</div>
-                <p className="mt-2 text-sm sm:text-base text-slate-600">Usuarios activos</p>
+                <div className="text-3xl sm:text-4xl font-bold text-slate-950">IA</div>
+                <p className="mt-2 text-sm sm:text-base text-slate-600">Análisis inteligente</p>
               </div>
               <div className="text-center">
-                <div className="text-3xl sm:text-4xl font-bold text-slate-950">500+</div>
-                <p className="mt-2 text-sm sm:text-base text-slate-600">Empresas asociadas</p>
+                <div className="text-3xl sm:text-4xl font-bold text-slate-950">PDF</div>
+                <p className="mt-2 text-sm sm:text-base text-slate-600">Subida de currículums</p>
               </div>
               <div className="text-center">
                 <div className="text-3xl sm:text-4xl font-bold text-slate-950">95%</div>
-                <p className="mt-2 text-sm sm:text-base text-slate-600">Tasa de satisfacción</p>
+                <p className="mt-2 text-sm sm:text-base text-slate-600">Precisión en análisis</p>
               </div>
               <div className="text-center">
                 <div className="text-3xl sm:text-4xl font-bold text-slate-950">2min</div>
-                <p className="mt-2 text-sm sm:text-base text-slate-600">Análisis promedio</p>
+                <p className="mt-2 text-sm sm:text-base text-slate-600">Tiempo promedio</p>
               </div>
             </div>
           </div>
@@ -199,23 +199,35 @@ export default async function HomePage() {
 
               <div className="rounded-3xl bg-slate-900 border border-slate-800 p-8 shadow-2xl">
                 <div className="space-y-4">
-                  <div className="text-sm font-semibold text-slate-400 mb-6">Ejemplo: Lista de candidatos</div>
-                  
+                  <div className="text-sm font-semibold text-slate-400 mb-2">Así se ve el panel de candidatos</div>
+                  <p className="text-xs text-slate-500 mb-4">Ordenados automáticamente por compatibilidad real con la oferta</p>
+
                   {[
-                    { name: "Alejandro G.", score: 98, status: "Excelente" },
-                    { name: "Laura M.", score: 85, status: "Muy bueno" },
-                    { name: "Carlos R.", score: 92, status: "Excelente" },
-                  ].map((candidate, idx) => (
-                    <div key={idx} className="flex items-center justify-between p-4 rounded-xl bg-slate-800/50 border border-slate-700 hover:border-emerald-500/50 transition">
-                      <div className="flex items-center gap-3">
-                        <div className="h-10 w-10 rounded-full bg-slate-700 flex items-center justify-center">
-                          <span className="text-emerald-400 font-bold text-sm">{candidate.score}%</span>
+                    { role: "Desarrollador Full Stack", score: 94 },
+                    { role: "Frontend Engineer", score: 81 },
+                    { role: "React Developer", score: 67 },
+                  ].map((candidate, idx) => {
+                    const getScoreColor = (score: number) => {
+                      if (score >= 90) return "text-emerald-400 bg-emerald-500/20";
+                      if (score >= 75) return "text-lime-400 bg-lime-500/20";
+                      if (score >= 60) return "text-amber-400 bg-amber-500/20";
+                      if (score >= 45) return "text-orange-400 bg-orange-500/20";
+                      return "text-rose-400 bg-rose-500/20";
+                    };
+                    return (
+                      <div key={idx} className="flex items-center justify-between p-4 rounded-xl bg-slate-800/50 border border-slate-700">
+                        <div className="flex items-center gap-3">
+                          <div className={`h-10 w-10 rounded-full flex items-center justify-center font-bold text-sm shrink-0 ${getScoreColor(candidate.score)}`}>
+                            {candidate.score}%
+                          </div>
+                          <div>
+                            <p className="text-sm font-medium text-slate-200">{candidate.role}</p>
+                            <p className="text-xs text-slate-500">Match con la oferta</p>
+                          </div>
                         </div>
-                        <span className="font-medium">{candidate.name}</span>
                       </div>
-                      <span className="text-xs px-2.5 py-1 rounded-full bg-slate-800 text-slate-300">{candidate.status}</span>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               </div>
             </div>
@@ -229,7 +241,7 @@ export default async function HomePage() {
               Listo para revolucionar tu búsqueda de empleo?
             </h2>
             <p className="text-lg text-slate-600 mb-10">
-              Únete a miles de candidatos y empresas que ya confían en MatchMaker para encontrar su match perfecto.
+              Candidatos que encuentran su próximo empleo y reclutadores que dan con el perfil que necesitan. MatchMaker lo hace posible con IA.
             </p>
             
             {!profile && (

@@ -204,10 +204,34 @@ export async function createJob(data: { title: string; description: string }) {
     recruiter_id: userData.user.id,
     title: data.title,
     description: data.description,
+    status: "active",
   });
 
   if (error) throw error;
   revalidatePath("/dashboard/recruiter");
+}
+
+export async function updateJob(jobId: string, data: { title: string; description: string; status: "active" | "ended" }) {
+  const supabase = await getSupabaseClient();
+  const { data: userData, error: userError } = await supabase.auth.getUser();
+  if (userError || !userData?.user) throw new Error("No authenticated user found.");
+
+  const payload: any = {
+    title: data.title,
+    description: data.description,
+    status: data.status,
+    updated_at: new Date().toISOString(),
+  };
+
+  const { error } = await supabase
+    .from("jobs")
+    .update(payload)
+    .eq("id", jobId)
+    .eq("recruiter_id", userData.user.id);
+
+  if (error) throw error;
+  revalidatePath("/dashboard/recruiter");
+  revalidatePath(`/dashboard/recruiter/${jobId}`);
 }
 
 export async function getJobs(searchQuery?: string) {
@@ -215,7 +239,7 @@ export async function getJobs(searchQuery?: string) {
   let query = supabase.from("jobs").select(`*, profiles(first_name, last_name)`).order("created_at", { ascending: false });
 
   if (searchQuery) {
-    query = query.ilike("title", `%${searchQuery}%`);
+    query = query.or(`title.ilike.%${searchQuery}%,description.ilike.%${searchQuery}%`);
   }
 
   const { data, error } = await query;
@@ -397,6 +421,36 @@ export async function applyToJob(applicationId: string) {
     .eq("candidate_id", userData.user.id);
 
   if (error) throw error;
+
+  // Notify the recruiter of the new candidate
+  try {
+    const { data: app, error: appError } = await supabase
+      .from("applications")
+      .select("job_id, candidate_id, jobs(title, recruiter_id), profiles!candidate_id(first_name, last_name)")
+      .eq("id", applicationId)
+      .single();
+
+    if (appError) throw appError;
+
+    if (app?.jobs) {
+      const job = app.jobs as any;
+      const candidate = app.profiles as any;
+      const candidateName = candidate
+        ? `${candidate.first_name} ${candidate.last_name}`.trim()
+        : "Un candidato";
+
+      await createNotification(supabase, {
+        userId: job.recruiter_id,
+        type: "new_candidate",
+        title: `Nueva candidatura en "${job.title}"`,
+        body: `${candidateName} ha aplicado a tu oferta.`,
+        link: `/dashboard/recruiter/${app.job_id}`,
+      });
+    }
+  } catch (e) {
+    console.error("[applyToJob] Error creating recruiter notification:", e);
+  }
+
   revalidatePath("/profile");
 }
 
@@ -476,6 +530,30 @@ export async function markApplicationAsViewed(applicationId: string) {
     .eq("status", "applied");
 
   if (error) throw error;
+
+  // Notify the candidate that the recruiter has seen their application
+  try {
+    const { data: app, error: appError } = await supabase
+      .from("applications")
+      .select("candidate_id, job_id, jobs(title)")
+      .eq("id", applicationId)
+      .single();
+
+    if (appError) throw appError;
+
+    if (app) {
+      const jobTitle = (app.jobs as any)?.title ?? "una oferta";
+      await createNotification(supabase, {
+        userId: app.candidate_id,
+        type: "application_update",
+        title: `Tu solicitud ha sido revisada`,
+        body: `El reclutador ha visto tu solicitud para "${jobTitle}".`,
+        link: `/jobs/${app.job_id}`,
+      });
+    }
+  } catch (e) {
+    console.error("[markApplicationAsViewed] Error creating candidate notification:", e);
+  }
 }
 
 export async function updateApplicationStatus(applicationId: string, status: "viewed" | "rejected" | "in_progress", message?: string) {
@@ -498,6 +576,41 @@ export async function updateApplicationStatus(applicationId: string, status: "vi
     .eq("id", applicationId);
 
   if (error) throw error;
+
+  // Notify the candidate of the status update (only for meaningful statuses)
+  if (status === "in_progress" || status === "rejected") {
+    try {
+      const { data: app, error: appError } = await supabase
+        .from("applications")
+        .select("candidate_id, job_id, jobs(title)")
+        .eq("id", applicationId)
+        .single();
+
+      if (appError) throw appError;
+
+      if (app) {
+        const jobTitle = (app.jobs as any)?.title ?? "una oferta";
+        const statusLabel = status === "in_progress" ? "ha avanzado a proceso de selección" : "ha sido rechazada";
+        const notifTitle = status === "in_progress"
+          ? `¡Avanzas en el proceso! "${jobTitle}"`
+          : `Actualización en tu solicitud a "${jobTitle}"`;
+        const body = message
+          ? `Tu solicitud ${statusLabel}. Mensaje del reclutador: "${message}"`
+          : `Tu solicitud a "${jobTitle}" ${statusLabel}.`;
+
+        await createNotification(supabase, {
+          userId: app.candidate_id,
+          type: "application_update",
+          title: notifTitle,
+          body,
+          link: `/jobs/${app.job_id}`,
+        });
+      }
+    } catch (e) {
+      console.error("[updateApplicationStatus] Error creating candidate notification:", e);
+    }
+  }
+
   revalidatePath("/dashboard/recruiter");
 }
 
@@ -509,6 +622,92 @@ export async function getResumeUrl(resumePath: string) {
   const { data, error } = await supabase.storage.from("resumes").createSignedUrl(resumePath, 3600); // 1 hour
   if (error) throw error;
   return data.signedUrl;
+}
+
+// --- NOTIFICATION ACTIONS ---
+
+export async function getNotifications() {
+  const supabase = await getSupabaseClient();
+  const { data: userData, error: userError } = await supabase.auth.getUser();
+  if (userError || !userData?.user) return [];
+
+  const { data, error } = await supabase
+    .from("notifications")
+    .select("*")
+    .eq("user_id", userData.user.id)
+    .order("created_at", { ascending: false })
+    .limit(30);
+
+  if (error) {
+    console.error("[getNotifications] Error fetching notifications:", error);
+    // Surface error to client so Navbar can show a warning
+    throw new Error(error.message);
+  }
+  return data ?? [];
+}
+
+export async function markNotificationRead(notificationId: string) {
+  const supabase = await getSupabaseClient();
+  const { data: userData, error: userError } = await supabase.auth.getUser();
+  if (userError || !userData?.user) return;
+
+  await supabase
+    .from("notifications")
+    .update({ read: true })
+    .eq("id", notificationId)
+    .eq("user_id", userData.user.id);
+}
+
+export async function markAllNotificationsRead() {
+  const supabase = await getSupabaseClient();
+  const { data: userData, error: userError } = await supabase.auth.getUser();
+  if (userError || !userData?.user) return;
+
+  await supabase
+    .from("notifications")
+    .update({ read: true })
+    .eq("user_id", userData.user.id)
+    .eq("read", false);
+}
+
+export async function clearReadNotifications() {
+  const supabase = await getSupabaseClient();
+  const { data: userData, error: userError } = await supabase.auth.getUser();
+  if (userError || !userData?.user) return;
+
+  await supabase
+    .from("notifications")
+    .delete()
+    .eq("user_id", userData.user.id)
+    .eq("read", true);
+}
+
+// Internal helper: create a notification for a user
+async function createNotification(supabase: any, {
+  userId,
+  type,
+  title,
+  body,
+  link,
+}: {
+  userId: string;
+  type: "application_update" | "new_candidate";
+  title: string;
+  body: string;
+  link: string;
+}) {
+  const { error } = await supabase.from("notifications").insert({
+    user_id: userId,
+    type,
+    title,
+    body,
+    link,
+    read: false,
+  });
+  if (error) {
+    console.error("[createNotification] Error inserting notification:", error);
+    throw error;
+  }
 }
 
 // Keep old analyzeMatch to not break existing DashboardShell just in case, but we will redirect users soon.

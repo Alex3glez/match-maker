@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useTransition, useRef } from "react";
 import { getJobById, getApplicationForJob, calculateJobMatch, applyToJob, getProfile, getCandidateResumes, uploadResume, saveCandidateResume } from "@/app/actions";
-import { ArrowLeft, Rocket, CheckCircle2, UploadCloud, FileText } from "lucide-react";
+import { ArrowLeft, Rocket, CheckCircle2, UploadCloud, FileText, MessageSquare } from "lucide-react";
 import Link from "next/link";
 import MatchResultCards from "@/components/MatchResultCards";
 
@@ -203,6 +203,15 @@ export default function PublicJobDetail({
               <MatchResultCards analysis={application} />
 
               <div className="rounded-[32px] border border-slate-200 bg-white p-8 shadow-sm">
+                {application.recruiter_message && (
+                  <div className="mb-6 flex items-start gap-3 rounded-2xl border border-emerald-200 bg-emerald-50 p-4">
+                    <MessageSquare className="mt-0.5 h-4 w-4 shrink-0 text-emerald-600" />
+                    <div>
+                      <p className="text-xs font-semibold text-emerald-700 mb-1">Mensaje del reclutador</p>
+                      <p className="text-sm text-emerald-900 italic">"{application.recruiter_message}"</p>
+                    </div>
+                  </div>
+                )}
                 <div className="flex flex-col items-center justify-between gap-4 sm:flex-row">
                   <div>
                     <h2 className="text-xl font-bold text-slate-900">
@@ -231,6 +240,12 @@ export default function PublicJobDetail({
                   ? "Esta solicitud no fue seleccionada en esta ocasión."
                   : "Estado actual de tu solicitud."}
               </p>
+              {application.status === "rejected" && application.recruiter_message && (
+                <div className="mt-4 rounded-2xl border border-rose-200 bg-rose-50 p-4 text-sm text-rose-700">
+                  <p className="font-semibold">Mensaje del reclutador</p>
+                  <p className="mt-2 italic">"{application.recruiter_message}"</p>
+                </div>
+              )}
             </div>
             {application.status === "calculated" ? (
               <div className="flex flex-col items-end gap-2">

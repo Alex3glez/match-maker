@@ -35,6 +35,7 @@ create table if not exists public.jobs (
   recruiter_id uuid references public.profiles(id) on delete cascade not null,
   title text not null,
   description text not null,
+  status text check (status in ('active', 'ended')) not null default 'active',
   created_at timestamp with time zone default timezone('utc'::text, now()) not null,
   updated_at timestamp with time zone default timezone('utc'::text, now()) not null
 );
@@ -165,6 +166,12 @@ create policy if not exists "Recruiters can view resumes of their applicants"
       and jobs.recruiter_id = auth.uid()
     )
   );
+
+-- Safe jobs status migration helper
+alter table public.jobs add column if not exists status text default 'active';
+alter table public.jobs drop constraint if exists jobs_status_check;
+alter table public.jobs add constraint jobs_status_check
+  check (status in ('active', 'ended'));
 
 -- Optional helper for auth triggers
 create or replace function public.handle_new_user()
