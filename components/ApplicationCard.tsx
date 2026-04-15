@@ -75,8 +75,14 @@ export default function ApplicationCard({ app, onStatusUpdate }: { app: any; onS
         alert("El candidato no tiene un currículum válido asociado a esta solicitud.");
         return;
       }
-      const url = await getResumeUrl(resumePath);
-      window.open(url, "_blank");
+      const result = await getResumeUrl(resumePath);
+      if (result.error) {
+        alert(result.error);
+        return;
+      }
+      if (result.url) {
+        window.open(result.url, "_blank");
+      }
     } catch (err: any) {
       alert(err.message || "Error al abrir el currículum.");
     }

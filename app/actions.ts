@@ -236,7 +236,7 @@ export async function updateJob(jobId: string, data: { title: string; descriptio
 
 export async function getJobs(searchQuery?: string) {
   const supabase = await getSupabaseClient();
-  let query = supabase.from("jobs").select(`*, profiles(first_name, last_name)`).order("created_at", { ascending: false });
+  let query = supabase.from("jobs").select(`*, profiles(first_name, last_name)`).eq("status", "active").order("created_at", { ascending: false });
 
   if (searchQuery) {
     query = query.or(`title.ilike.%${searchQuery}%,description.ilike.%${searchQuery}%`);
@@ -286,6 +286,21 @@ export async function getRecruiterJobs() {
   }));
 
   return jobsWithCounts;
+}
+
+export async function deleteJob(jobId: string) {
+  const supabase = await getSupabaseClient();
+  const { data: userData, error: userError } = await supabase.auth.getUser();
+  if (userError || !userData?.user) throw new Error("No authenticated user found.");
+
+  const { error } = await supabase
+    .from("jobs")
+    .delete()
+    .eq("id", jobId)
+    .eq("recruiter_id", userData.user.id);
+
+  if (error) throw error;
+  revalidatePath("/dashboard/recruiter");
 }
 
 // --- APPLICATION & MATCH ACTIONS ---
@@ -518,6 +533,22 @@ export async function markApplicationsAsRead(jobId: string) {
     .eq("job_id", jobId);
 }
 
+export async function markNotificationsForLinkRead(link: string) {
+  const supabase = await getSupabaseClient();
+  const { data: userData, error: userError } = await supabase.auth.getUser();
+  if (userError || !userData?.user) return;
+
+  await supabase
+    .from("notifications")
+    .update({ read: true })
+    .eq("user_id", userData.user.id)
+    .eq("link", link);
+}
+
+export async function markNotificationsForApplicationRead(jobId: string) {
+  return markNotificationsForLinkRead(`/jobs/${jobId}`);
+}
+
 export async function markApplicationAsViewed(applicationId: string) {
   const supabase = await getSupabaseClient();
   const { data: userData, error: userError } = await supabase.auth.getUser();
@@ -614,14 +645,26 @@ export async function updateApplicationStatus(applicationId: string, status: "vi
   revalidatePath("/dashboard/recruiter");
 }
 
+import { createClient } from "@supabase/supabase-js";
+
 export async function getResumeUrl(resumePath: string) {
   const supabase = await getSupabaseClient();
   const { data: userData, error: userError } = await supabase.auth.getUser();
   if (userError || !userData?.user) throw new Error("No authenticated user found.");
 
-  const { data, error } = await supabase.storage.from("resumes").createSignedUrl(resumePath, 3600); // 1 hour
-  if (error) throw error;
-  return data.signedUrl;
+  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!serviceRoleKey) throw new Error("Missing SUPABASE_SERVICE_ROLE_KEY");
+  
+  const serviceSupabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, serviceRoleKey);
+  
+  const { data, error } = await serviceSupabase.storage.from("resumes").createSignedUrl(resumePath, 3600); // 1 hour
+  if (error) {
+    if (error.message?.includes("Object not found") || (error as any).status === 400 || (error as any).statusCode === '404') {
+      return { error: "El archivo del currículum ya no se encuentra disponible." };
+    }
+    return { error: error.message || "Error al generar la url del currículum." };
+  }
+  return { url: data.signedUrl };
 }
 
 // --- NOTIFICATION ACTIONS ---

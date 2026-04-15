@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, useTransition, useRef } from "react";
-import { getJobById, getApplicationForJob, calculateJobMatch, applyToJob, getProfile, getCandidateResumes, uploadResume, saveCandidateResume } from "@/app/actions";
+import { getJobById, getApplicationForJob, calculateJobMatch, applyToJob, getProfile, getCandidateResumes, uploadResume, saveCandidateResume, markNotificationsForLinkRead } from "@/app/actions";
 import { ArrowLeft, Rocket, CheckCircle2, UploadCloud, FileText, MessageSquare } from "lucide-react";
 import Link from "next/link";
 import MatchResultCards from "@/components/MatchResultCards";
@@ -38,6 +38,11 @@ export default function PublicJobDetail({
       setJob(jobData);
       setProfile(profileData);
       setApplication(appData);
+
+      // Mark notifications as read when candidate views the job
+      if (profileData?.role === "candidate") {
+        await markNotificationsForLinkRead(`/jobs/${resolvedParams.jobId}`);
+      }
 
       if (profileData?.role === "candidate") {
         const resList = await getCandidateResumes();

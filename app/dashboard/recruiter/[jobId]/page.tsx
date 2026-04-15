@@ -1,4 +1,4 @@
-import { getJobById, getJobApplications, markApplicationsAsRead } from "@/app/actions";
+import { getJobById, getJobApplications, markApplicationsAsRead, markNotificationsForLinkRead } from "@/app/actions";
 import { ArrowLeft, User, FileText, CheckCircle2, Briefcase } from "lucide-react";
 import Link from "next/link";
 import ApplicationCard from "@/components/ApplicationCard";
@@ -12,6 +12,10 @@ export default async function RecruiterJobDetail({
 
   const job = await getJobById(jobId);
   const applications = await getJobApplications(jobId);
+  
+  // Mark applications and related notifications as read when viewing the job detail
+  await markApplicationsAsRead(jobId);
+  await markNotificationsForLinkRead(`/dashboard/recruiter/${jobId}`);
 
   if (!job) {
     return (

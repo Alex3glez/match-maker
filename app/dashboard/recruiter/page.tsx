@@ -1,23 +1,33 @@
 import Link from "next/link";
 import { getRecruiterJobs } from "@/app/actions";
-import { Plus, Briefcase, ChevronRight, Bell } from "lucide-react";
+import { Plus, Briefcase, Bell } from "lucide-react";
 import { redirect } from "next/navigation";
-
-const STATUS_LABELS: Record<string, string> = {
-  all: "Todas",
-  active: "Activas",
-  ended: "Terminadas",
-};
+import { headers } from "next/headers";
+import JobStatusTabs from "@/components/JobStatusTabs";
+import DeleteJobButton from "@/components/DeleteJobButton";
 
 export const dynamic = "force-dynamic";
+export const revalidate = 0;
 
-export default async function RecruiterDashboard({ searchParams }: { searchParams?: { status?: string | string[] } }) {
-  const rawStatus = searchParams?.status;
+export async function generateMetadata() {
+  const headersList = await headers();
+  return {
+    title: "Mis Ofertas - MatchMaker",
+  };
+}
+
+export default async function RecruiterDashboard({ searchParams }: { searchParams: Promise<{ [key: string]: string | string[] | undefined }> }) {
+  const params = await searchParams;
+  const rawStatus = params?.status;
   const selectedStatus = Array.isArray(rawStatus) ? rawStatus[0] : rawStatus ?? "all";
   const normalizedStatus = ["all", "active", "ended"].includes(selectedStatus) ? selectedStatus : "all";
+  
+  console.log("[DEBUG RecruiterDashboard]", { rawStatus, selectedStatus, normalizedStatus });
+  
   let jobs;
   try {
     jobs = await getRecruiterJobs();
+    console.log("[DEBUG] Got jobs:", jobs?.map((j: any) => ({ id: j.id, title: j.title, status: j.status })));
   } catch (error: any) {
     if (error.message === "No authenticated user found.") {
       redirect("/login");
@@ -25,7 +35,15 @@ export default async function RecruiterDashboard({ searchParams }: { searchParam
     throw error;
   }
 
-  const filteredJobs = normalizedStatus === "all" ? jobs : jobs.filter((job: any) => job.status === normalizedStatus);
+  const filteredJobs = normalizedStatus === "all" ? jobs : jobs.filter((job: any) => {
+    const jobStatus = job?.status ?? "active";
+    const matches = jobStatus === normalizedStatus;
+    console.log(`[DEBUG Filter] ${job.title}: status=${job.status}, jobStatus=${jobStatus}, normalizedStatus=${normalizedStatus}, matches=${matches}`);
+    return matches;
+  });
+  
+  console.log("[DEBUG] Filtered jobs count:", filteredJobs.length, "Total jobs:", jobs.length);
+  
   const emptyMessage = normalizedStatus === "all" ? "Aún no has creado ninguna oferta." : normalizedStatus === "active" ? "No hay ofertas activas en este momento." : "No tienes ofertas terminadas.";
 
   return (
@@ -36,15 +54,7 @@ export default async function RecruiterDashboard({ searchParams }: { searchParam
           <p className="mt-2 text-sm text-slate-600">Filtra tus ofertas activas o terminadas.</p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          {Object.entries(STATUS_LABELS).map(([value, label]) => (
-            <Link
-              key={value}
-              href={`/dashboard/recruiter${value === "all" ? "" : `?status=${value}`}`}
-              className={`rounded-full px-4 py-2 text-sm font-medium transition ${normalizedStatus === value ? "bg-slate-950 text-white shadow-lg" : "bg-slate-100 text-slate-700 hover:bg-slate-200"}`}
-            >
-              {label}
-            </Link>
-          ))}
+          <JobStatusTabs active={normalizedStatus as "all" | "active" | "ended"} />
           <Link
             href="/dashboard/recruiter/create"
             className="flex items-center gap-2 rounded-full bg-slate-950 px-5 py-3 text-sm font-semibold text-white transition hover:bg-slate-800"
@@ -85,6 +95,7 @@ export default async function RecruiterDashboard({ searchParams }: { searchParam
                   <span className={`rounded-full px-3 py-1 text-xs font-semibold ${job.status === 'ended' ? 'bg-slate-100 text-slate-700' : 'bg-emerald-100 text-emerald-700'}`}>
                     {job.status === 'ended' ? 'Terminada' : 'Activa'}
                   </span>
+                  <DeleteJobButton jobId={job.id} />
                   <Link
                     href={`/dashboard/recruiter/${job.id}/edit`}
                     className="rounded-full border border-slate-200 bg-slate-100 px-4 py-2 text-sm font-medium text-slate-700 transition hover:border-slate-300 hover:bg-slate-200"

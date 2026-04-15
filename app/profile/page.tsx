@@ -1,8 +1,8 @@
 "use client";
 
 import { useState, useEffect, useTransition, useRef } from "react";
-import { getProfile, saveProfile, getCandidateApplications, uploadResume, saveCandidateResume, getCandidateResumes, deleteCandidateResume } from "../actions";
-import { User, UploadCloud, Briefcase, ChevronRight, FileText, Trash2, MessageSquare } from "lucide-react";
+import { getProfile, saveProfile, getCandidateApplications, uploadResume, saveCandidateResume, getCandidateResumes, deleteCandidateResume, getResumeUrl } from "../actions";
+import { User, UploadCloud, Briefcase, ChevronRight, FileText, Trash2, MessageSquare, Eye } from "lucide-react";
 import Link from "next/link";
 import { createBrowserClient } from "@supabase/ssr";
 
@@ -119,6 +119,21 @@ export default function ProfilePage() {
     });
   };
 
+  const handleViewMyResume = async (path: string) => {
+    try {
+      const result = await getResumeUrl(path);
+      if (result.error) {
+        alert(result.error);
+        return;
+      }
+      if (result.url) {
+        window.open(result.url, "_blank");
+      }
+    } catch (err: any) {
+      alert(err.message || "Error al abrir el currículum.");
+    }
+  };
+
   const filteredApplications = applications.filter((app) =>
     statusFilter === "all" ? true : app.status === statusFilter
   );
@@ -198,15 +213,26 @@ export default function ProfilePage() {
                             <p className="text-xs text-slate-500">{new Date(resume.created_at).toLocaleDateString()}</p>
                           </div>
                         </div>
-                        <button
-                          type="button"
-                          onClick={() => handleDeleteResume(resume.id, resume.file_path)}
-                          disabled={isPending}
-                          className="rounded-full p-2 text-slate-400 hover:bg-rose-50 hover:text-rose-600 transition"
-                          title="Eliminar currículum"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </button>
+                        <div className="flex items-center gap-2">
+                          <button
+                            type="button"
+                            onClick={() => handleViewMyResume(resume.file_path)}
+                            disabled={isPending}
+                            className="rounded-full p-2 text-slate-400 hover:bg-blue-50 hover:text-blue-600 transition"
+                            title="Ver currículum"
+                          >
+                            <Eye className="h-4 w-4" />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleDeleteResume(resume.id, resume.file_path)}
+                            disabled={isPending}
+                            className="rounded-full p-2 text-slate-400 hover:bg-rose-50 hover:text-rose-600 transition"
+                            title="Eliminar currículum"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </button>
+                        </div>
                       </div>
                     ))}
                   </div>
@@ -272,7 +298,14 @@ export default function ProfilePage() {
                       >
                         <div className="flex items-start justify-between">
                           <div>
-                            <h3 className="font-semibold text-slate-900">{app.jobs?.title}</h3>
+                            <div className="flex items-center gap-2">
+                              <h3 className="font-semibold text-slate-900">{app.jobs?.title}</h3>
+                              {app.jobs?.status === 'active' ? (
+                                <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-semibold text-emerald-700">Activa</span>
+                              ) : app.jobs?.status === 'ended' ? (
+                                <span className="rounded-full bg-rose-100 px-2 py-0.5 text-[10px] font-semibold text-rose-700">Terminada</span>
+                              ) : null}
+                            </div>
                             <p className="mt-1 text-xs text-slate-500">
                               Actualizada el {new Date(app.updated_at).toLocaleDateString()}
                             </p>

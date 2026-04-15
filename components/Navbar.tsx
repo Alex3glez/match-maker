@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useState, useRef, useTransition } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
 import { supabaseBrowser } from "../lib/supabase-browser";
 import { LogOut, Briefcase, LayoutDashboard, Search, Bell } from "lucide-react";
 import { getNotifications, markNotificationRead, markAllNotificationsRead, clearReadNotifications } from "@/app/actions";
@@ -27,6 +27,8 @@ export default function Navbar() {
   const [, startTransition] = useTransition();
   const notifRef = useRef<HTMLDivElement | null>(null);
   const closeTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const pathname = usePathname();
+  const lastPathRef = useRef<string>("");
 
   const unreadCount = notifications.filter((n) => !n.read).length;
 
@@ -88,7 +90,7 @@ export default function Navbar() {
       authListener?.subscription?.unsubscribe();
       window.removeEventListener("profile-updated", handleProfileUpdated);
     };
-  }, [router]);
+  }, []);
 
   // Realtime subscription for new notifications
   useEffect(() => {
@@ -106,6 +108,23 @@ export default function Navbar() {
         },
         (payload) => {
           setNotifications((prev) => [payload.new as Notification, ...prev]);
+        }
+      )
+      .on(
+        "postgres_changes",
+        {
+          event: "UPDATE",
+          schema: "public",
+          table: "notifications",
+          filter: `user_id=eq.${user.id}`,
+        },
+        (payload) => {
+          // Update the notification with the new read status
+          setNotifications((prev) =>
+            prev.map((notif) =>
+              notif.id === payload.new.id ? (payload.new as Notification) : notif
+            )
+          );
         }
       )
       .subscribe();
@@ -127,6 +146,22 @@ export default function Navbar() {
     return () => document.removeEventListener("mousedown", handleClick);
   }, [showNotifications]);
 
+  // Refresh notifications when navigating to a different page
+  useEffect(() => {
+    if (pathname !== lastPathRef.current && user) {
+      lastPathRef.current = pathname;
+      startTransition(async () => {
+        try {
+          const notifs = await getNotifications();
+          setNotifications(notifs as Notification[]);
+          setNotifError(null);
+        } catch (e: any) {
+          console.error("[Navbar] getNotifications failed:", e);
+        }
+      });
+    }
+  }, [pathname, user]);
+
   const handleLogout = async () => {
     await supabaseBrowser.auth.signOut();
     setUser(null);
@@ -136,14 +171,12 @@ export default function Navbar() {
     router.push("/login");
   };
 
-  const handleNotificationClick = (notif: Notification) => {
+  const handleNotificationClick = async (notif: Notification) => {
     if (!notif.read) {
-      startTransition(async () => {
-        await markNotificationRead(notif.id);
-        setNotifications((prev) =>
-          prev.map((n) => (n.id === notif.id ? { ...n, read: true } : n))
-        );
-      });
+      await markNotificationRead(notif.id);
+      setNotifications((prev) =>
+        prev.map((n) => (n.id === notif.id ? { ...n, read: true } : n))
+      );
     }
     setShowNotifications(false);
     router.push(notif.link);
