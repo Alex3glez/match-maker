@@ -4,6 +4,21 @@ MatchMaker es una plataforma diseñada para conectar a reclutadores y candidatos
 
 ---
 
+## 🔑 Cuentas de Prueba
+
+Para agilizar la revisión técnica de la plataforma, he dejado creadas varias cuentas de prueba con ofertas ya publicadas y candidaturas (CVs) enviadas.
+
+**Reclutadores (Recruiters):**
+- `test@recruiter.com` (Pass: `123456`)
+- `test_2@recruiter.com` (Pass: `123456`)
+
+**Candidatos (Candidates):**
+- `test@candidate.com` (Pass: `123456`)
+- `test_1@candidate.com` (Pass: `123456`)
+- `test_2@candidate.com` (Pass: `123456`)
+
+---
+
 ## ⚙️ Cómo ejecutar el proyecto localmente
 
 Sigue estos pasos para levantar la aplicación en tu entorno local.
@@ -18,7 +33,7 @@ Asegúrate de tener instalados:
 Abre tu terminal y ejecuta:
 
 ```bash
-git clone <url-del-repositorio>
+git clone https://github.com/Alex3glez/match-maker.git
 cd match-maker
 npm install
 ```

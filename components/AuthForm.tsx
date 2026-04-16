@@ -30,7 +30,7 @@ export default function AuthForm() {
           setErrorMessage(response.error.message);
           return;
         }
-        router.push("/dashboard");
+        window.location.href = "/dashboard";
       } else {
         // Sign up
         const response = await supabaseBrowser.auth.signUp({ email, password });
@@ -42,21 +42,22 @@ export default function AuthForm() {
         // After successful signup, we need to create the profile
         if (response.data?.user?.id) {
           try {
-            await saveProfile({
+            const { error: profileError } = await supabaseBrowser.from("profiles").upsert({
+              id: response.data.user.id,
               role,
               first_name: firstName,
               last_name: lastName,
+              updated_at: new Date().toISOString(),
             });
-            router.push("/dashboard");
+            
+            if (profileError) {
+              console.error("Upsert failed:", profileError);
+            }
+            
+            window.location.href = "/profile";
           } catch (profileError: any) {
             console.error("Error creating profile:", profileError);
-            const errText = profileError?.message || "";
-            if (errText.includes("Could not find the table") || errText.includes("relation \"public.profiles\" does not exist")) {
-              setErrorMessage("Cuenta creada pero falta la tabla 'profiles'. Ejecuta schema.sql en Supabase.");
-            } else {
-              setErrorMessage("Cuenta creada pero falló al guardar el perfil. Por favor, actualízalo en tu página de perfil.");
-            }
-            // Add a small delay so they can read it before routing, or just don't route so they see the error
+            window.location.href = "/profile";
           }
         }
       }
